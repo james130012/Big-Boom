@@ -100,7 +100,7 @@ class Api:
 
         for defi in sorted_definitions:
             module_id = defi.get("id")
-            content_to_wrap = defi.get("module_content_html","").strip() # Ensure it's a string and stripped
+            content_to_wrap = defi.get("module_content_html","").strip() 
             start_comment_text = defi.get("start_comment","").strip()
             end_comment_text = defi.get("end_comment","").strip()
 
@@ -110,51 +110,40 @@ class Api:
             
             content_hash = hash(content_to_wrap)
             if content_hash in processed_content_hashes:
-                # print(f"DEBUG (_add_comments_to_html): 模块 '{module_id}' 的内容 (hash: {content_hash}) 可能已作为另一模块的一部分被包装或重复。跳过。")
                 continue
 
             # --- 关键修正: 正确构建HTML注释标记 ---
-            start_marker_tag = f""
-            end_marker_tag = f""
+            start_marker_tag = f"" # 更正！
+            end_marker_tag = f""   # 更正！
             # --- 结束关键修正 ---
             
-            wrapped_content = f"{start_marker_tag}\n{content_to_wrap}\n{end_marker_tag}" # Use original content_to_wrap (already stripped)
+            wrapped_content = f"{start_marker_tag}\n{content_to_wrap}\n{end_marker_tag}"
 
-            # 查找 content_to_wrap 在 modified_html 中的位置
-            # 只替换第一次出现的内容，以避免对已处理（嵌套）内容进行意外更改
             try:
                 current_pos = 0
                 while True:
                     found_at = modified_html.find(content_to_wrap, current_pos)
                     if found_at == -1:
-                        print(f"警告 (_add_comments_to_html): 未能在HTML中找到模块 '{module_id}' 的内容片段进行包裹。内容片段 (前50字符): '{content_to_wrap[:50]}...'")
-                        break # 跳出 while 循环
+                        # 只有在第一次查找（current_pos == 0）时才打印警告，避免对已处理的嵌套内容重复警告
+                        if current_pos == 0:
+                           print(f"警告 (_add_comments_to_html): 未能在HTML中找到模块 '{module_id}' 的内容片段进行包裹。内容片段 (前50字符): '{content_to_wrap[:50]}...'")
+                        break 
 
-                    # 检查找到的内容是否已经被我们的注释包裹（避免重复包裹）
-                    # 检查前缀
-                    prefix_start_index = found_at - len(start_marker_tag) -1 # -1 for potential newline
+                    prefix_start_index = found_at - len(start_marker_tag) -1 
                     is_already_started_by_us = False
                     if prefix_start_index >= 0:
                         potential_start_marker = modified_html[prefix_start_index : found_at].strip()
                         if potential_start_marker == start_marker_tag:
                              is_already_started_by_us = True
                     
-                    # 检查后缀 (这个检查比较粗略，因为 content_to_wrap 后面可能还有其他内容)
-                    # is_already_ended_by_us = modified_html[found_at + len(content_to_wrap) : found_at + len(content_to_wrap) + len(end_marker_tag) + 1].strip().startswith(end_marker_tag)
+                    if is_already_started_by_us: 
+                        current_pos = found_at + len(content_to_wrap) 
+                        continue 
 
-
-                    if is_already_started_by_us: # 如果已经被我们自己的起始标记包裹，则假设它已被正确处理
-                        # print(f"DEBUG (_add_comments_to_html): 模块 '{module_id}' 的内容在位置 {found_at} 似乎已被其自身的起始标记包裹。前进到下一个查找位置。")
-                        current_pos = found_at + len(content_to_wrap) # 移动到当前找到内容的末尾之后继续查找
-                        # processed_content_hashes.add(content_hash) # 标记为已处理，即使只是跳过这个实例
-                        continue # 继续 while 循环，查找下一个实例
-
-                    # 如果没有被我们包裹，执行替换
                     modified_html = modified_html[:found_at] + wrapped_content + modified_html[found_at + len(content_to_wrap):]
                     print(f"DEBUG (_add_comments_to_html): 已为模块 '{module_id}' 添加注释标记 (在位置 {found_at})。")
                     processed_content_hashes.add(content_hash) 
-                    break # 成功替换一次后，跳出 while 循环，处理下一个定义
-
+                    break 
             except Exception as e:
                 print(f"错误 (_add_comments_to_html): 在为模块 '{module_id}' 添加注释时发生异常: {e}")
         
@@ -170,20 +159,18 @@ class Api:
             return ""
 
         # --- 关键修正: 正确构建HTML注释标记 ---
-        start_marker = f""
-        end_marker   = f""
+        start_marker = f"" # 更正！
+        end_marker   = f"" # 更正！
         # --- 结束关键修正 ---
 
         start_index = html_string.find(start_marker)
         if start_index == -1:
-            # print(f"DEBUG (_extract_module_content_from_string): 未找到模块 '{module_id}' 的起始标记 '{start_marker}'。")
             return ""
 
         content_start_index = start_index + len(start_marker)
         end_index = html_string.find(end_marker, content_start_index)
 
         if end_index == -1:
-            # print(f"DEBUG (_extract_module_content_from_string): 未找到模块 '{module_id}' 的结束标记 '{end_marker}' (在起始标记 '{start_marker}' 之后)。")
             return ""
 
         extracted = html_string[content_start_index:end_index].strip()
@@ -201,19 +188,17 @@ class Api:
                 continue
 
             # --- 关键修正: 正确构建HTML注释标记和占位符 ---
-            start_marker = f""
-            end_marker   = f""
-            placeholder  = f""
+            start_marker = f"" # 更正！
+            end_marker   = f"" # 更正！
+            placeholder  = f"" # 更正！
             # --- 结束关键修正 ---
 
             start_idx = skeleton.find(start_marker)
             if start_idx == -1:
-                # print(f"DEBUG (_generate_skeleton_from_string): 在骨架生成中未找到模块 '{module_id}' 的起始标记 '{start_marker}'。")
                 continue
             
             end_idx = skeleton.find(end_marker, start_idx + len(start_marker))
             if end_idx == -1:
-                # print(f"DEBUG (_generate_skeleton_from_string): 在骨架生成中未找到模块 '{module_id}' 的结束标记 '{end_marker}' (在起始标记 '{start_marker}' 之后)。")
                 continue
             
             content_to_replace_with_markers = skeleton[start_idx : end_idx + len(end_marker)]
@@ -232,18 +217,20 @@ class Api:
 
         if not self.openrouter_api_key:
             print("警告: OPENROUTER_API_KEY 环境变量未设置。将使用模拟LLM数据。")
-            mock_header_content = "<header><h1>模拟页眉内容</h1></header>"
-            mock_footer_content = "<footer><p>模拟页脚内容</p></footer>"
-            raw_mock_html_input = f"<body>{mock_header_content}<div>一些中间内容</div>{mock_footer_content}</body>"
+            mock_header_content = "<header><h1>模拟页眉内容</h1></header>" # 不包含换行符
+            mock_footer_content = "<footer><p>模拟页脚内容</p></footer>" # 不包含换行符
+            # 确保 raw_mock_html_input 中的内容与 module_content_html 完全一致 (包括空格和换行)
+            raw_mock_html_input = f"<body>\n{mock_header_content}\n<div>一些中间内容</div>\n{mock_footer_content}\n</body>"
+
             mock_defs = [
                 {"id": "header_mock", "description": "模拟页眉", "start_comment": "LLM_MODULE_START: header_mock", "end_comment": "LLM_MODULE_END: header_mock", "module_content_html": mock_header_content},
                 {"id": "footer_mock", "description": "模拟页脚", "start_comment": "LLM_MODULE_START: footer_mock", "end_comment": "LLM_MODULE_END: footer_mock", "module_content_html": mock_footer_content}
             ]
             llm_response_data = {"module_count_suggestion": len(mock_defs), "definitions": mock_defs}
-            print(f"DEBUG: 使用模拟数据。原始模拟HTML: '{raw_mock_html_input[:100]}...'")
+            print(f"DEBUG: 使用模拟数据。原始模拟HTML: '{raw_mock_html_input[:200]}...'") # 增加打印长度
             if llm_response_data and "definitions" in llm_response_data:
                  html_to_process = self._add_comments_to_html(raw_mock_html_input, llm_response_data["definitions"])
-            print(f"DEBUG: 模拟数据处理后，带注释的HTML: '{html_to_process[:150]}...'")
+            print(f"DEBUG: 模拟数据处理后，带注释的HTML: '{html_to_process[:250]}...'") # 增加打印长度
         else:
             current_llm_model = os.getenv("DEFAULT_LLM_MODEL", self.api_config.get("default_model"))
             print(f"OpenRouter API密钥已加载。准备调用LLM (模型: {current_llm_model})...")
@@ -256,7 +243,7 @@ class Api:
                 "model": current_llm_model,
                 "messages": [{"role": "user", "content": full_prompt}],
                 "temperature": self.api_config.get("llm_temperature", 0.1),
-                "max_tokens": self.api_config.get("llm_max_tokens", 4096), # 确保此值足够大
+                "max_tokens": self.api_config.get("llm_max_tokens", 4096),
             }
             api_url = self.api_config.get("api_url")
             timeout = self.api_config.get("request_timeout_seconds", 120)
@@ -293,8 +280,16 @@ class Api:
                 print(json.dumps(llm_response_data, indent=2, ensure_ascii=False))
                 
                 if llm_response_data and "definitions" in llm_response_data:
+                    # 在调用 _add_comments_to_html 之前，确保 LLM 返回的 module_content_html 与原始 HTML 中的片段精确匹配（包括空格和换行）
+                    # 这是一个复杂的问题，因为 LLM 可能会重新格式化 HTML。
+                    # 一个简化的假设是 LLM 返回的 HTML 是原始 HTML 的一个“干净”子串。
+                    # 如果 LLM 对 HTML 进行了规范化（例如，移除多余空格，改变属性顺序），这里的直接字符串查找会失败。
+                    # 理想情况下，LLM 应返回字符级别的起始和结束偏移量，或者使用更鲁棒的 HTML 解析和匹配库。
+                    # 当前的 content_to_wrap.strip() 和原始 HTML 中的精确查找可能因细微差异而失败。
+                    # 解决方案：让LLM返回的 module_content_html 尽可能与原始片段一致，或者在 _add_comments_to_html 中使用更模糊的匹配。
+                    # 目前，我们依赖 LLM 返回的 module_content_html.strip() 能够在原始 HTML 中被找到。
                     html_to_process = self._add_comments_to_html(raw_original_code, llm_response_data["definitions"])
-                    print(f"DEBUG: LLM处理后，带注释的HTML (前150字符): '{html_to_process[:150]}...'")
+                    print(f"DEBUG: LLM处理后，带注释的HTML (前250字符): '{html_to_process[:250]}...'")
                 else:
                     print("警告: LLM响应中无定义，无法添加注释标记。将使用原始HTML。")
 
@@ -344,8 +339,8 @@ class Api:
             llm_end_comment_text = module_def.get('end_comment','').strip()
             
             # --- 关键修正: 在日志中也正确构建实际的HTML注释标记 ---
-            actual_start_marker = f""
-            actual_end_marker = f""
+            actual_start_marker = f"" # 更正！
+            actual_end_marker = f""   # 更正！
             # --- 结束关键修正 ---
             
             content = self._extract_module_content_from_string(self.original_html_content_py, module_def)
@@ -353,10 +348,10 @@ class Api:
             print(f"DEBUG: 模块ID '{module_id}':")
             print(f"  期望的起始标记: '{actual_start_marker}'")
             print(f"  期望的结束标记: '{actual_end_marker}'")
-            if not content:
-                 print(f"  警告: original_content 为空。检查 self.original_html_content_py (前100字符: '{self.original_html_content_py[:100]}...') 中是否存在标记并正确界定内容。")
+            if not content and (llm_start_comment_text and llm_end_comment_text): # 只有在期望标记存在时才打印警告
+                 print(f"  警告: original_content 为空。检查 self.original_html_content_py (前250字符: '{self.original_html_content_py[:250]}...') 中是否存在标记并正确界定内容。")
             print(f"  提取到的 original_content (前100字符): '{content[:100]}...' (长度: {len(content)})")
-            processed_active_definitions.append({**module_def, "original_content": content}) # 即使内容为空也添加，以便前端知道此模块被处理过
+            processed_active_definitions.append({**module_def, "original_content": content}) 
         print("--- 结束处理模块定义 ---\n")
 
         skeleton = self._generate_skeleton_from_string(self.original_html_content_py, current_active_module_definitions)
@@ -391,7 +386,7 @@ class Api:
             
         for module_id, new_content in modified_modules.items():
             # --- 关键修正: 精确重建占位符 ---
-            placeholder = f""
+            placeholder = f"" # 更正！
             # --- 结束关键修正 ---
             
             new_content_str = str(new_content) if new_content is not None else ""
