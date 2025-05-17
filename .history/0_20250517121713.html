@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Python 模块联动流程图</title>
+
+  <!-- TailwindCSS -->
+  <script defer src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+  <!-- Mermaid JS -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.mermaid) {
+        mermaid.initialize({ startOnLoad: false });
+        const elems = document.querySelectorAll('.mermaid');
+        try {
+          mermaid.init(undefined, elems);
+          console.log("[Mermaid] 渲染完成，共渲染", elems.length, "个图表");
+        } catch (err) {
+          console.error("[Mermaid Error] 渲染失败:", err);
+        }
+      } else {
+        console.error("Mermaid 未加载成功！");
+      }
+    });
+  </script>
+
+  <style>
+    /* 页面通用 */
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+    .container {
+      background-color: #fff;
+      padding: 2rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      width: 100%;
+      max-width: 80rem;
+      overflow: auto;
+    }
+    /* Mermaid 图表 */
+    .mermaid {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    /* 节点样式 */
+    .userAction  { fill: #D6EAF8; stroke: #5DADE2; stroke-width: 2px; }
+    .mainApi     { fill: #C8E6C9; stroke: #66BB6A; stroke-width: 2px; }
+    .llmHandler  { fill: #FFF9C4; stroke: #FFEE58; stroke-width: 2px; }
+    .htmlUtils   { fill: #FFCCBC; stroke: #FF8A65; stroke-width: 2px; }
+    .data        { fill: #E1BEE7; stroke: #BA68C8; stroke-width: 2px; }
+    .config      { fill: #B2DFDB; stroke: #4DB6AC; stroke-width: 2px; }
+    .mermaid .label     { color: #333 !important; font-weight: 500 !important; }
+    .mermaid .edgeLabel { background-color: #f3f4f6 !important;
+                           padding: 2px 4px;
+                           border-radius: 4px; }
+    /* 图例颜色块 */
+    .legend-block {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+      border-radius: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-6 text-center">
+      Python 模块联动流程图
+    </h1>
+
+    <div class="mermaid">
+      graph TD
+        A["用户在 gui.html 输入\n(原始HTML, 修改指令)"] --> B{Api.analyze_html()\n在 main.py};
+
+        subgraph 初始化阶段 (main.py)
+          direction LR
+          C1[api_config.json] --> C2["config_loader.py\n(load_api_config)"];
+          C2 --> C3["Api 类实例\n(持有配置信息)"];
+        end
+
+        B --> D["llm_handler.py\n(LLMHandler.get_module_definitions)\n使用配置信息"];
+        D --> E["LLM 返回\n模块定义"];
+        E --> B;
+
+        B --> F["html_utils.py\n(add_markers_to_html)"];
+        F --> G["带标记的 HTML"];
+        G --> H["html_utils.py\n(extract_module_content_by_markers)"];
+        H --> I["提取的模块原始内容\n(存入 Api.llm_defined_modules)"];
+        I --> B;
+
+        B --> J["html_utils.py\n(generate_skeleton_with_placeholders)"];
+        J --> K["HTML 骨架\n(模块内容被占位符替换)"];
+        K --> B;
+
+        B -- "如果提供了修改指令" --> L["llm_handler.py\n(LLMHandler.get_code_modification)\n使用配置信息"];
+        L --> M["LLM 返回\n修改后代码和说明书"];
+        M --> B;
+
+        B --> N["结果返回 gui.html\n(模块列表, LLM修改结果等)"];
+        N --> O{"用户在 gui.html\n可选: 手动编辑模块内容"};
+        O --> P{Api.integrate_modules_with_user_edits()\n在 main.py\n(接收用户编辑内容)};
+
+        P --> Q["html_utils.py\n(integrate_final_code)\n整合用户编辑, LLM修改, 原始模块\n到 HTML 骨架"];
+        Q --> R["最终整合后的 HTML 代码"];
+        R --> S["结果返回 gui.html\n(展示最终代码)"];
+
+        classDef userAction  fill:#D6EAF8,stroke:#5DADE2,stroke-width:2px
+        classDef mainApi     fill:#C8E6C9,stroke:#66BB6A,stroke-width:2px
+        classDef llmHandler  fill:#FFF9C4,stroke:#FFEE58,stroke-width:2px
+        classDef htmlUtils   fill:#FFCCBC,stroke:#FF8A65,stroke-width:2px
+        classDef data        fill:#E1BEE7,stroke:#BA68C8,stroke-width:2px
+        classDef config      fill:#B2DFDB,stroke:#4DB6AC,stroke-width:2px
+
+        class A,N,O,S userAction
+        class B,P       mainApi
+        class D,L       llmHandler
+        class F,H,J,Q   htmlUtils
+        class E,G,I,K,M,R data
+        class C1,C2,C3  config
+    </div>
+
+    <div class="mt-8 p-4 border border-gray-200 rounded-lg bg-gray-50">
+      <h2 class="text-xl font-semibold text-gray-700 mb-3">图例说明:</h2>
+      <ul class="list-disc list-inside space-y-2 text-gray-600">
+        <li><span class="legend-block userAction"></span><span class="font-semibold">蓝色框 (userAction):</span> 代表用户在 gui.html 界面的操作。</li>
+        <li><span class="legend-block mainApi"></span><span class="font-semibold">绿色框 (mainApi):</span> 代表 main.py 中 Api 核心调用。</li>
+        <li><span class="legend-block llmHandler"></span><span class="font-semibold">黄色框 (llmHandler):</span> 代表 llm_handler.py 与 LLM 交互。</li>
+        <li><span class="legend-block htmlUtils"></span><span class="font-semibold">橙色框 (htmlUtils):</span> 代表 html_utils.py 工具函数。</li>
+        <li><span class="legend-block data"></span><span class="font-semibold">紫色框 (data):</span> 代表处理数据流。</li>
+        <li><span class="legend-block config"></span><span class="font-semibold">青色框 (config):</span> 代表配置加载部分。</li>
+        <li><span class="legend-block" style="visibility:hidden"></span><span class="font-semibold">箭头:</span> 表示流程或函数调用关系。</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
