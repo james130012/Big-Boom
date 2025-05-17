@@ -533,7 +533,7 @@ HTML代码：
         return self.modified_modules.get(module_id, {}).get("modification_manual", "")
 
     def get_prompt_template_for_frontend(self):
-        return PROMPT_TEMPLATE_BASE.replace("{user_html_code}", "[用户 HTML 在此]").replace("{specific_instruction}", "[修改指令在此]")
+        
 
         if not llm_response_data or "definitions" not in llm_response_data:
             print("错误: LLM响应数据不完整或格式不正确 (在最终检查中)。")

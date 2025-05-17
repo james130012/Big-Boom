@@ -172,7 +172,6 @@
 
          // 无论如何再试一次，保证注入时机不会错过
         loadPromptTemplate();
-        
         // 等待 PyWebview API 准备好的工具函数
         async function waitForPywebviewApi(maxAttempts = 10, delay = 1000) {
             let attempts = 0;
