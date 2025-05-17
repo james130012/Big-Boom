@@ -160,6 +160,21 @@
             }
         }
 
+        // 等待 PyWebview 准备好
+        window.addEventListener('pywebviewready', () => {
+            console.log("PyWebview ready, loading prompt template...");
+            loadPromptTemplate();
+        });
+
+        // 延迟加载，确保 PyWebview 初始化
+        setTimeout(() => {
+            if (window.pywebview) {
+                loadPromptTemplate();
+            } else {
+                console.warn("PyWebview not loaded after delay.");
+                loadPromptTemplate();
+            }
+        }, 2000);
          // 在 DOM 完全加载后，立即尝试拉取提示词；同时监听自定义事件
          document.addEventListener('DOMContentLoaded', () => {
              console.log("DOM loaded — 尝试加载提示词模板");

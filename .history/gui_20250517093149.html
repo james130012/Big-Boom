@@ -139,64 +139,31 @@
         const integratedCodeOutput = document.getElementById('integratedCodeOutput');
         const promptTemplateDisplay = document.getElementById('promptTemplateDisplay');
 
-        // 确保按钮存在
-        if (!analyzeBtn) {
-            console.error("Analyze button not found! Check if id='analyzeBtn' exists in HTML.");
-        }
-
         async function loadPromptTemplate() {
             try {
                 if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.get_prompt_template_for_frontend === 'function') {
                     const template = await window.pywebview.api.get_prompt_template_for_frontend();
-                    promptTemplateDisplay.textContent = template || "提示词模板为空。";
-                    console.log("Prompt template loaded successfully:", template);
+                    promptTemplateDisplay.textContent = template || "无法加载提示词模板。";
                 } else {
-                    promptTemplateDisplay.textContent = "PyWebview 未加载，请检查后端是否启动。\n\n示例结构：\n你是一个专业的Web前端开发助手...\n...";
-                    console.warn("PyWebview API not available during prompt template load.");
+                    promptTemplateDisplay.textContent = "提示词模板将由Python后端定义。\n\n示例结构：\n你是一个专业的Web前端开发助手...\n对于给定的HTML代码：...\n请以JSON格式返回你的分析结果...\n以下是需要你分析的HTML代码：\n[用户提供的HTML代码将在此处由后端插入]\n...";
                 }
             } catch (error) {
                 console.error("Error loading prompt template:", error);
-                promptTemplateDisplay.textContent = "加载提示词模板时出错：" + error.message;
+                promptTemplateDisplay.textContent = "加载提示词模板时出错。";
             }
         }
 
-         // 在 DOM 完全加载后，立即尝试拉取提示词；同时监听自定义事件
-         document.addEventListener('DOMContentLoaded', () => {
-             console.log("DOM loaded — 尝试加载提示词模板");
-             loadPromptTemplate();
-         });
-         document.addEventListener('pywebviewready', () => {
-             console.log("pywebviewready — 后端 API 注入完成，加载提示词模板");
-             loadPromptTemplate();
-         });
-
-        // 等待 PyWebview API 准备好的工具函数
-        async function waitForPywebviewApi(maxAttempts = 10, delay = 1000) {
-            let attempts = 0;
-            while (attempts < maxAttempts) {
-                if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.analyze_html === 'function') {
-                    console.log("PyWebview API is ready.");
-                    return true;
-                }
-                console.log(`Waiting for PyWebview API... Attempt ${attempts + 1}/${maxAttempts}`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                attempts++;
-            }
-            console.error("PyWebview API not available after maximum attempts.");
-            return false;
+        window.addEventListener('pywebviewready', loadPromptTemplate);
+        if (!window.pywebview) {
+            loadPromptTemplate();
         }
 
         analyzeBtn.addEventListener('click', async () => {
-            console.log("Analyze button clicked."); // 确认按钮点击
             const originalHtml = originalCodeInput.value;
             const instruction = instructionInput.value;
-            console.log("Sending instruction to backend:", instruction);
-            console.log("Original HTML:", originalHtml);
-
             if (!originalHtml.trim()) {
                 llmStatus.textContent = '错误：请输入原始HTML代码。';
                 llmStatus.className = 'mt-2 text-sm text-red-600';
-                console.warn("No HTML input provided.");
                 return;
             }
 
@@ -208,17 +175,7 @@
             moduleListItems.innerHTML = '';
             modificationResult.classList.add('hidden');
 
-            // 确保 PyWebview API 可用
-            const apiReady = await waitForPywebviewApi();
-            if (!apiReady) {
-                llmStatus.textContent = '错误：无法连接到后端 PyWebview API。';
-                llmStatus.className = 'mt-2 text-sm text-red-600';
-                analyzeBtn.disabled = false;
-                return;
-            }
-
             try {
-                console.log("Calling analyze_html with HTML and instruction...");
                 const response = await window.pywebview.api.analyze_html(originalHtml, instruction);
                 console.log("Response from Python analyze_html:", response);
 
@@ -250,7 +207,7 @@
                 }
             } catch (error) {
                 console.error("Error calling Python API (analyze_html):", error);
-                llmStatus.textContent = '调用Python API时发生错误：' + error.message;
+                llmStatus.textContent = '调用Python API时发生错误。请检查Python控制台和浏览器控制台。';
                 llmStatus.className = 'mt-2 text-sm text-red-600';
             } finally {
                 analyzeBtn.disabled = false;
@@ -294,7 +251,7 @@
                 }
             } catch (error) {
                 console.error("Error calling Python API (integrate_modules):", error);
-                integratedCodeOutput.value = '调用Python API进行整合时发生错误：' + error.message;
+                integratedCodeOutput.value = '调用Python API进行整合时发生错误。';
             } finally {
                 integrateBtn.disabled = false;
             }

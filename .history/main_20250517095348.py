@@ -343,10 +343,10 @@ class Api:
         return skeleton
 
     def analyze_html(self, original_code, specific_instruction=""):
-        logging.info("Python API: analyze_html 调用")
-        logging.info(f"Received original_code (first 100 chars): {original_code[:100]}...")
-        logging.info(f"Received specific_instruction: {specific_instruction}")
-        raw_original_code = original_code.strip() if original_code else ""
+    logging.info("Python API: analyze_html 调用")
+    logging.info(f"Received original_code (first 100 chars): {original_code[:100]}...")
+    logging.info(f"Received specific_instruction: {specific_instruction}")
+    raw_original_code = original_code.strip() if original_code else ""
 
         if not raw_original_code:
             logging.warning("收到空HTML，返回空响应")
@@ -534,6 +534,7 @@ HTML代码：
 
     def get_prompt_template_for_frontend(self):
         return PROMPT_TEMPLATE_BASE.replace("{user_html_code}", "[用户提供的HTML代码将在此处由后端插入]").replace("{specific_instruction}", "[用户提供的修改指令将在此处由前端插入]")
+        self.original_html_content_py = html_to_process
 
         if not llm_response_data or "definitions" not in llm_response_data:
             print("错误: LLM响应数据不完整或格式不正确 (在最终检查中)。")

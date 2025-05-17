@@ -1,13 +1,10 @@
 import webview
+import webview
 import json
 import os
-import logging
 import requests
 import re
 from dotenv import load_dotenv
-
-# 配置日志
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
 
@@ -100,76 +97,9 @@ PROMPT_TEMPLATE_BASE = """你是一个专业的Web前端开发助手。你的任
   }
 }
 
-示例输入和输出：
-输入HTML（简化）：
-
-html
-
-<div class="animation-container">
-    <h3>动画1</h3>
-    <div class="animation-box" id="anim1-box">
-        <div class="brain-outline"></div>
-    </div>
-    <button onclick="playAnim1()">播放</button>
-    <p>声波进入大脑</p>
-</div>
-<style>
-    .animation-box { width: 90%; min-height: 150px; }
-    .brain-outline { width: 100px; height: 100px; }
-</style>
-<script>
-    function playAnim1() { /* 原逻辑 */ }
-</script>
-
-输入指令：{specific_instruction} = "将动画1替换为旋转立方体，点击改变颜色（蓝→红→绿）。"
-输出：
-json
-
-{
-  "status": "success",
-  "message": "动画1修改成功",
-  "modules": [
-    {
-      "id": "animation_box_1",
-      "description": "动画1模块，包含HTML、CSS、JS、按钮和描述",
-      "html": "<div class=\"animation-box\" id=\"anim1-box\"><div class=\"brain-outline\"></div></div>",
-      "css": [".brain-outline", ".animation-box"],
-      "js": "function playAnim1() { /* 原逻辑 */ }",
-      "associated_elements": {
-        "button": "<button onclick=\"playAnim1()\">播放</button>",
-        "description": "<p>声波进入大脑</p>",
-        "parent_container": "<div class=\"animation-container\">...</div>",
-        "other": ""
-      },
-      "dependencies": [".animation-box样式"]
-    }
-  ],
-  "modification_manual": "1. 替换第3-5行HTML为：<div class=\"animation-box\" id=\"anim1-box\"><div class=\"cube\" id=\"anim1-cube\"></div></div>\n2. 在<style>中，删除.brain-outline，添加：#anim1-cube { width: 100px; height: 100px; background-color: #3498db; animation: rotate 2s infinite; perspective: 1000px; transform-style: preserve-3d; cursor: pointer; } @keyframes rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }\n3. 在<script>中，替换playAnim1为：function playAnim1() { const cube = document.getElementById('anim1-cube'); const colors = ['#3498db', '#e74c3c', '#2ecc71']; let current = 0; cube.onclick = () => { current = (current + 1) % colors.length; cube.style.backgroundColor = colors[current]; }; }\n4. 替换第6行按钮为：<button onclick=\"playAnim1()\">改变颜色</button>\n5. 替换第7行描述为：<p>旋转立方体改变颜色，展示语言处理阶段</p>\n6. 确保其他动画、文本和布局不变，使用#anim1-cube选择器。",
-  "modified_code": {
-    "html": "<div class=\"animation-box\" id=\"anim1-box\"><div class=\"cube\" id=\"anim1-cube\"></div></div>",
-    "css": "#anim1-cube { width: 100px; height: 100px; background-color: #3498db; animation: rotate 2s infinite; perspective: 1000px; transform-style: preserve-3d; cursor: pointer; }\n@keyframes rotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }",
-    "js": "function playAnim1() { const cube = document.getElementById('anim1-cube'); const colors = ['#3498db', '#e74c3c', '#2ecc71']; let current = 0; cube.onclick = () => { current = (current + 1) % colors.length; cube.style.backgroundColor = colors[current]; }; }",
-    "associated_elements": {
-      "button": "<button onclick=\"playAnim1()\">改变颜色</button>",
-      "description": "<p>旋转立方体改变颜色，展示语言处理阶段</p>",
-      "parent_container": "",
-      "other": ""
-    }
-  }
-}
-
-空输入处理：
-返回：{"status": "error", "message": "无效或空HTML", "modules": [], "modification_manual": "", "modified_code": {}}
-
-输入HTML：
-html
-
-{user_html_code}
-
-修改指令：
-{specific_instruction}
-请严格按上述JSON结构返回结果。
+请严格按照上述要求返回结果。
 """
+
 
 
 DEFAULT_API_CONFIG = {
@@ -188,40 +118,43 @@ class Api:
         self.api_config = self._load_api_config()
         self.site_url = os.getenv("YOUR_SITE_URL", "http://localhost:8003/default-app")
         self.site_name = os.getenv("YOUR_SITE_NAME", "DefaultModularizerAppV3")
-        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-        self.modified_modules = {}  # 存储修改后的模块
-        self.module_definitions = []  # 存储模块定义
+        self.openrouter_api_key = None
 
     def _load_api_config(self, config_path="api_config.json"):
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                logging.info(f"成功加载API配置文件: {config_path}")
+                print(f"成功加载API配置文件: {config_path}")
                 return {**DEFAULT_API_CONFIG, **config}
         except FileNotFoundError:
-            logging.warning(f"API配置文件 '{config_path}' 未找到，使用默认配置")
+            print(f"警告: API配置文件 '{config_path}' 未找到，将使用默认配置。")
             return DEFAULT_API_CONFIG
         except json.JSONDecodeError:
-            logging.warning(f"API配置文件 '{config_path}' 格式错误，使用默认配置")
+            print(f"警告: API配置文件 '{config_path}' 格式错误，将使用默认配置。")
             return DEFAULT_API_CONFIG
         except Exception as e:
-            logging.warning(f"加载API配置文件出错: {e}，使用默认配置")
+            print(f"警告: 加载API配置文件时发生错误: {e}，将使用默认配置。")
             return DEFAULT_API_CONFIG
+
+    def get_prompt_template_for_frontend(self):
+        return PROMPT_TEMPLATE_BASE.replace("{user_html_code}", "[用户提供的HTML代码将在此处由后端插入]")
 
     def _add_comments_to_html(self, original_html, definitions):
         if not definitions:
             return original_html
 
+        # 验证和过滤有效定义
         valid_definitions = []
         for d in definitions:
             if not (d.get("start_comment") and d.get("end_comment")):
-                logging.debug(f"跳过模块 {d.get('id', 'Unknown')}，缺少 start_comment 或 end_comment")
+                print(f"DEBUG (_add_comments_to_html): 跳过模块 {d.get('id', 'Unknown')}，缺少 start_comment 或 end_comment。")
                 continue
             if not (("start_line" in d and "end_line" in d) or ("start_char" in d and "end_char" in d)):
-                logging.debug(f"跳过模块 {d.get('id', 'Unknown')}，缺少有效起止位置")
+                print(f"DEBUG (_add_comments_to_html): 跳过模块 {d.get('id', 'Unknown')}，缺少有效的起止位置。")
                 continue
             valid_definitions.append(d)
 
+        # 按 end_line 或 end_char 降序排序，确保外层模块先处理
         sorted_definitions = sorted(
             valid_definitions,
             key=lambda x: x.get("end_line", x.get("end_char", 0)),
@@ -231,6 +164,15 @@ class Api:
         lines = original_html.splitlines(keepends=True)
         modified_html = original_html
         processed_ids = set()
+
+        # 检查位置重叠
+        for i, defi in enumerate(sorted_definitions):
+            for j, other in enumerate(sorted_definitions[i+1:]):
+                if (defi.get("start_line") and other.get("start_line") and
+                    defi["start_line"] <= other["end_line"] and other["start_line"] <= defi["end_line"]) or \
+                   (defi.get("start_char") and other.get("start_char") and
+                    defi["start_char"] <= other["end_char"] and other["start_char"] <= defi["end_char"]):
+                    print(f"警告: 模块 '{defi['id']}' 和 '{other['id']}' 位置重叠，可能导致嵌套问题。")
 
         for defi in sorted_definitions:
             module_id = defi.get("id")
@@ -242,11 +184,11 @@ class Api:
             end_char = defi.get("end_char")
 
             if not all([module_id, start_comment_text, end_comment_text]):
-                logging.debug(f"跳过模块 {module_id or 'Unknown'}，定义字段不完整")
+                print(f"DEBUG (_add_comments_to_html): 跳过模块 {module_id or 'Unknown'}，定义字段不完整。")
                 continue
 
             if module_id in processed_ids:
-                logging.debug(f"模块 '{module_id}' 已处理，跳过")
+                print(f"DEBUG (_add_comments_to_html): 模块 '{module_id}' 已处理，跳过。")
                 continue
 
             start_marker_tag = f"<!-- {start_comment_text} -->\n"
@@ -256,11 +198,18 @@ class Api:
                 if start_line is not None and end_line is not None:
                     start_line_1based = start_line
                     end_line_1based = end_line
+
                     if not (1 <= start_line_1based <= len(lines) and 1 <= end_line_1based <= len(lines)):
-                        logging.warning(f"模块 '{module_id}' 的行号无效 (start_line: {start_line}, end_line: {end_line})")
+                        print(f"警告 (_add_comments_to_html): 模块 '{module_id}' 的行号无效 (start_line: {start_line}, end_line: {end_line})。")
                         continue
+
                     start_char_pos = sum(len(line) for line in lines[:start_line_1based-1])
                     end_char_pos = sum(len(line) for line in lines[:end_line_1based])
+
+                    if start_char_pos >= end_char_pos or end_char_pos > len(modified_html):
+                        print(f"警告 (_add_comments_to_html): 模块 '{module_id}' 的字符位置无效 (start_char_pos: {start_char_pos}, end_char_pos: {end_char_pos})。")
+                        continue
+
                     modified_html = (
                         modified_html[:start_char_pos] +
                         start_marker_tag +
@@ -270,8 +219,9 @@ class Api:
                     )
                 elif start_char is not None and end_char is not None:
                     if not (0 <= start_char <= end_char <= len(modified_html)):
-                        logging.warning(f"模块 '{module_id}' 的字符索引无效 (start_char: {start_char}, end_char: {end_char})")
+                        print(f"警告 (_add_comments_to_html): 模块 '{module_id}' 的字符索引无效 (start_char: {start_char}, end_char: {end_char})。")
                         continue
+
                     modified_html = (
                         modified_html[:start_char] +
                         start_marker_tag +
@@ -280,13 +230,15 @@ class Api:
                         modified_html[end_char:]
                     )
                 else:
-                    logging.warning(f"模块 '{module_id}' 缺少有效起止位置")
+                    print(f"警告 (_add_comments_to_html): 模块 '{module_id}' 缺少有效的起止位置。")
                     continue
-                logging.debug(f"已为模块 '{module_id}' 添加注释标记")
+
+                print(f"DEBUG (_add_comments_to_html): 已为模块 '{module_id}' 添加注释标记 (start: {start_line or start_char}, end: {end_line or end_char})。")
                 processed_ids.add(module_id)
+
                 lines = modified_html.splitlines(keepends=True)
             except Exception as e:
-                logging.error(f"在为模块 '{module_id}' 添加注释时出错: {e}")
+                print(f"错误 (_add_comments_to_html): 在为模块 '{module_id}' 添加注释时发生异常: {e}")
 
         return modified_html
 
@@ -296,7 +248,7 @@ class Api:
         end_marker_text = module_def.get('end_comment', '').strip()
 
         if not start_marker_text or not end_marker_text:
-            logging.debug(f"模块 '{module_id}' 缺少标记，跳过")
+            print(f"DEBUG (_extract_module_content_from_string): 模块 '{module_id}' 缺少标记，跳过。")
             return ""
 
         start_marker = f"<!-- {start_marker_text} -->"
@@ -304,16 +256,18 @@ class Api:
 
         start_index = html_string.find(start_marker)
         if start_index == -1:
-            logging.debug(f"未找到模块 '{module_id}' 的起始标记")
+            print(f"DEBUG (_extract_module_content_from_string): 未找到模块 '{module_id}' 的起始标记。")
             return ""
 
         content_start_index = start_index + len(start_marker)
         end_index = html_string.find(end_marker, content_start_index)
+
         if end_index == -1:
-            logging.debug(f"未找到模块 '{module_id}' 的结束标记")
+            print(f"DEBUG (_extract_module_content_from_string): 未找到模块 '{module_id}' 的结束标记。")
             return ""
 
         extracted = html_string[content_start_index:end_index].strip()
+        # 移除嵌套模块的注释
         extracted = re.sub(r'<!-- LLM_MODULE_(START|END): [a-zA-Z0-9_]+ -->', '', extracted).strip()
         return extracted
 
@@ -334,206 +288,187 @@ class Api:
             start_idx = skeleton.find(start_marker)
             if start_idx == -1:
                 continue
+
             end_idx = skeleton.find(end_marker, start_idx + len(start_marker))
             if end_idx == -1:
                 continue
 
-            content_to_replace = skeleton[start_idx:end_idx + len(end_marker)]
-            skeleton = skeleton.replace(content_to_replace, placeholder, 1)
+            content_to_replace_with_markers = skeleton[start_idx:end_idx + len(end_marker)]
+            skeleton = skeleton.replace(content_to_replace_with_markers, placeholder, 1)
         return skeleton
 
-    def analyze_html(self, original_code, specific_instruction=""):
-        logging.info("Python API: analyze_html 调用")
-        logging.info(f"Received original_code (first 100 chars): {original_code[:100]}...")
-        logging.info(f"Received specific_instruction: {specific_instruction}")
+    def analyze_html(self, original_code):
+        print("Python API: analyze_html 调用。")
         raw_original_code = original_code.strip() if original_code else ""
 
         if not raw_original_code:
-            logging.warning("收到空HTML，返回空响应")
+            print("警告: 收到的HTML代码为空，将返回空模块定义。")
             self.original_html_content_py = ""
             return {
-                "status": "error",
-                "message": "无效或空HTML",
+                "status": "success",
+                "message": "输入HTML为空，未识别到模块。",
                 "active_module_definitions": [],
-                "html_skeleton": "",
-                "modified_code": {}
+                "html_skeleton": ""
             }
 
-        self.original_html_content_py = raw_original_code
-        self.original_html = raw_original_code
+        if not ("<" in raw_original_code and ">" in raw_original_code):
+            print("警告: 收到的HTML代码不包含有效标签，将返回空模块定义。")
+            self.original_html_content_py = raw_original_code
+            return {
+                "status": "success",
+                "message": "输入HTML无效，未识别到模块。",
+                "active_module_definitions": [],
+                "html_skeleton": raw_original_code
+            }
 
-        # 第一步：模块化分析
-        module_prompt = """分析以下HTML代码，识别潜在的模块（如动画、页眉、页脚、文本块），返回模块定义列表，每个模块包含：
-- id：唯一标识（如animation_box_1、header）
-- description：模块描述（中文，如“动画1模块”）
-- start_line/end_line：模块起止行号
-- start_char/end_char：模块起止字符位置
-- start_comment/end_comment：注释标记（如<!-- LLM_MODULE_START: id -->）
-返回JSON格式：
-{
-  "module_count_suggestion": <建议处理的模块数>,
-  "definitions": [
-    {
-      "id": "<模块ID>",
-      "description": "<描述>",
-      "start_line": <起始行>,
-      "end_line": <结束行>,
-      "start_char": <起始字符>,
-      "end_char": <结束字符>,
-      "start_comment": "<起始注释>",
-      "end_comment": "<结束注释>"
-    }
-  ]
-}
-HTML代码：
-{user_html_code}
-"""
-        module_prompt = module_prompt.replace("{user_html_code}", raw_original_code)
+        print(f"DEBUG: 输入HTML (前200字符): '{raw_original_code[:200]}...'")
+
+        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+        print(f"DEBUG: 在 analyze_html 中, API Key 是: {'SET' if self.openrouter_api_key else 'NOT SET'}")
+
         llm_response_data = None
+        html_to_process = raw_original_code
 
         if not self.openrouter_api_key:
-            logging.warning("OPENROUTER_API_KEY 未设置，使用模拟数据")
+            print("警告: OPENROUTER_API_KEY 环境变量未设置。将使用模拟LLM数据。")
+            mock_header_content = "<header><h1>模拟页眉内容</h1></header>"
+            mock_footer_content = "<footer><p>模拟页脚内容</p></footer>"
+            raw_mock_html_input = f"<body>\n{mock_header_content}\n<div>一些中间内容</div>\n{mock_footer_content}\n</body>"
+
             mock_defs = [
                 {
-                    "id": "animation_box_1",
-                    "description": "动画1模块",
-                    "start_comment": "LLM_MODULE_START: animation_box_1",
-                    "end_comment": "LLM_MODULE_END: animation_box_1",
-                    "start_line": 100,
-                    "end_line": 104,
-                    "start_char": 1000,
-                    "end_char": 1200
+                    "id": "header_mock",
+                    "description": "模拟页眉",
+                    "start_comment": "LLM_MODULE_START: header_mock",
+                    "end_comment": "LLM_MODULE_END: header_mock",
+                    "start_line": 2,
+                    "end_line": 2,
+                    "start_char": 7,
+                    "end_char": 32
+                },
+                {
+                    "id": "footer_mock",
+                    "description": "模拟页脚",
+                    "start_comment": "LLM_MODULE_START: footer_mock",
+                    "end_comment": "LLM_MODULE_END: footer_mock",
+                    "start_line": 4,
+                    "end_line": 4,
+                    "start_char": 62,
+                    "end_char": 83
                 }
             ]
             llm_response_data = {"module_count_suggestion": len(mock_defs), "definitions": mock_defs}
-            html_to_process = self._add_comments_to_html(raw_original_code, llm_response_data["definitions"])
+            print(f"DEBUG: 使用模拟数据。原始模拟HTML: '{raw_mock_html_input[:200]}...'")
+            if llm_response_data and "definitions" in llm_response_data:
+                html_to_process = self._add_comments_to_html(raw_mock_html_input, llm_response_data["definitions"])
+            print(f"DEBUG: 模拟数据处理后，带注释的HTML: '{html_to_process[:250]}...'")
         else:
+            current_llm_model = os.getenv("DEFAULT_LLM_MODEL", self.api_config.get("default_model"))
+            print(f"OpenRouter API密钥已加载。准备调用LLM (模型: {current_llm_model})...")
+            full_prompt = PROMPT_TEMPLATE_BASE.replace("{user_html_code}", raw_original_code)
+            request_headers = self.api_config.get("base_headers", {}).copy()
+            request_headers["Authorization"] = f"Bearer {self.openrouter_api_key}"
+            if self.site_url: request_headers["HTTP-Referer"] = self.site_url
+            if self.site_name: request_headers["X-Title"] = self.site_name
+            request_data = {
+                "model": current_llm_model,
+                "messages": [{"role": "user", "content": full_prompt}],
+                "temperature": self.api_config.get("llm_temperature", 0.1),
+                "max_tokens": self.api_config.get("llm_max_tokens", 4096),
+            }
+            api_url = self.api_config.get("api_url")
+            timeout = self.api_config.get("request_timeout_seconds", 120)
+
+            if not api_url:
+                print("错误: API URL 未在配置文件中定义。")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": "API URL配置缺失。", "active_module_definitions": [], "html_skeleton": raw_original_code}
+
             try:
-                headers = {
-                    "Authorization": f"Bearer {self.openrouter_api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": self.site_url,
-                    "X-Title": self.site_name
-                }
-                payload = {
-                    "model": self.api_config.get("default_model"),
-                    "messages": [{"role": "user", "content": module_prompt}],
-                    "temperature": self.api_config.get("llm_temperature", 0.1),
-                    "max_tokens": self.api_config.get("llm_max_tokens", 4096)
-                }
-                response = requests.post(self.api_config.get("api_url"), headers=headers, json=payload, timeout=self.api_config.get("request_timeout_seconds", 120))
+                print(f"发送到 OpenRouter. URL: {api_url}, 模型: {request_data['model']}")
+                print(f"DEBUG: 发送的提示词 (前500字符): '{full_prompt[:500]}...'")
+                response = requests.post(api_url, headers=request_headers, data=json.dumps(request_data), timeout=timeout)
                 response.raise_for_status()
-                llm_response_data = json.loads(response.json()["choices"][0]["message"]["content"].strip("```json\n").strip("```"))
-                html_to_process = self._add_comments_to_html(raw_original_code, llm_response_data["definitions"])
+                response_json = response.json()
+
+                if 'choices' not in response_json or not response_json['choices']:
+                    raise KeyError("LLM响应缺少 'choices' 字段")
+
+                message_content = response_json['choices'][0].get('message', {}).get('content', '')
+                if not message_content:
+                    raise KeyError("LLM响应缺少 'content' 字段")
+
+                cleaned_json_str = message_content.strip()
+                if cleaned_json_str.startswith("```json"):
+                    cleaned_json_str = cleaned_json_str[len("```json"):].lstrip()
+                elif cleaned_json_str.startswith("```"):
+                    cleaned_json_str = cleaned_json_str[len("```"):].lstrip()
+                if cleaned_json_str.endswith("```"):
+                    cleaned_json_str = cleaned_json_str[:-len("```")].rstrip()
+
+                try:
+                    llm_response_data = json.loads(cleaned_json_str)
+                except json.JSONDecodeError:
+                    print(f"错误: LLM返回的内容不是有效JSON。原始内容: '{cleaned_json_str[:200]}...'")
+                    print(f"DEBUG: 完整API响应: {json.dumps(response_json, indent=2, ensure_ascii=False)}")
+                    raise
+
+                # 处理非预期格式（数组）
+                if isinstance(llm_response_data, list):
+                    print("警告: LLM返回了一个数组而不是对象，正在尝试转换为预期格式...")
+                    normalized_defs = []
+                    for defi in llm_response_data:
+                        # 规范化字段名
+                        if 'start_char_index' in defi:
+                            defi['start_char'] = defi.pop('start_char_index')
+                        if 'end_char_index' in defi:
+                            defi['end_char'] = defi.pop('end_char_index')
+                        # 修复 null 的 start_comment 和 end_comment
+                        if defi.get('start_comment') is None or defi.get('end_comment') is None:
+                            module_id = defi.get('id', 'unknown')
+                            defi['start_comment'] = f"LLM_MODULE_START: {module_id}"
+                            defi['end_comment'] = f"LLM_MODULE_END: {module_id}"
+                        normalized_defs.append(defi)
+                    llm_response_data = {
+                        "module_count_suggestion": len(normalized_defs),
+                        "definitions": normalized_defs
+                    }
+
+                print("\nDEBUG: 解析后的LLM响应数据 (llm_response_data):")
+                print(json.dumps(llm_response_data, indent=2, ensure_ascii=False))
+
+                if llm_response_data and "definitions" in llm_response_data:
+                    html_to_process = self._add_comments_to_html(raw_original_code, llm_response_data["definitions"])
+                    print(f"DEBUG: LLM处理后，带注释的HTML (前250字符): '{html_to_process[:250]}...'")
+                else:
+                    print("警告: LLM响应中无定义，无法添加注释标记。将使用原始HTML。")
+
+            except requests.exceptions.HTTPError as e_http:
+                print(f"Python API: OpenRouter API请求失败 (HTTPError): {e_http}")
+                print(f"响应内容: {e_http.response.text if e_http.response else 'N/A'}")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": f"LLM API请求失败: {str(e_http)}", "active_module_definitions": [], "html_skeleton": raw_original_code}
+            except requests.exceptions.RequestException as e_req:
+                print(f"Python API: OpenRouter API请求失败: {e_req}")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": f"LLM API请求失败: {str(e_req)}", "active_module_definitions": [], "html_skeleton": raw_original_code}
+            except json.JSONDecodeError as e_json:
+                print(f"Python API: 解析JSON时出错: {e_json}")
+                print(f"导致JSON解析错误的原始文本: '{cleaned_json_str[:200] if 'cleaned_json_str' in locals() else 'N/A'}...'")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": f"返回的JSON格式无效: {str(e_json)}", "active_module_definitions": [], "html_skeleton": raw_original_code}
+            except KeyError as e_key:
+                response_json_for_error = response_json if 'response_json' in locals() else "N/A"
+                print(f"Python API: LLM返回的JSON缺少关键字段: {e_key}")
+                print(f"LLM返回的JSON对象 (导致KeyError的): {json.dumps(response_json_for_error, indent=2, ensure_ascii=False) if isinstance(response_json_for_error, dict) else response_json_for_error}")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": f"LLM返回的JSON缺少字段: {str(e_key)}", "active_module_definitions": [], "html_skeleton": raw_original_code}
             except Exception as e:
-                logging.error(f"模块化分析出错: {e}")
-                html_to_process = raw_original_code
+                print(f"Python API: LLM分析或注释添加过程中发生错误: {e}")
+                self.original_html_content_py = raw_original_code
+                return {"status": "error", "message": f"LLM处理错误: {str(e)}", "active_module_definitions": [], "html_skeleton": raw_original_code}
 
         self.original_html_content_py = html_to_process
-        self.module_definitions = llm_response_data.get("definitions", []) if llm_response_data else []
-        processed_definitions = []
-        for module_def in self.module_definitions:
-            content = self._extract_module_content_from_string(self.original_html_content_py, module_def)
-            processed_definitions.append({**module_def, "original_content": content})
-
-        skeleton = self._generate_skeleton_from_string(self.original_html_content_py, self.module_definitions)
-
-        # 第二步：处理用户指定的修改（如果有）
-        modified_code = {}
-        modification_manual = ""
-        if specific_instruction:
-            full_prompt = PROMPT_TEMPLATE_BASE.replace("{user_html_code}", raw_original_code).replace("{specific_instruction}", specific_instruction)
-            try:
-                headers = {
-                    "Authorization": f"Bearer {self.openrouter_api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": self.site_url,
-                    "X-Title": self.site_name
-                }
-                payload = {
-                    "model": self.api_config.get("default_model"),
-                    "messages": [{"role": "user", "content": full_prompt}],
-                    "temperature": self.api_config.get("llm_temperature", 0.1),
-                    "max_tokens": self.api_config.get("llm_max_tokens", 4096)
-                }
-                response = requests.post(self.api_config.get("api_url"), headers=headers, json=payload, timeout=self.api_config.get("request_timeout_seconds", 120))
-                response.raise_for_status()
-                response_data = json.loads(response.json()["choices"][0]["message"]["content"].strip("```json\n").strip("```"))
-                if response_data["status"] == "success" and response_data["modules"]:
-                    module_id = response_data["modules"][0]["id"]
-                    self.modified_modules[module_id] = {
-                        "modified_code": response_data["modified_code"],
-                        "modification_manual": response_data["modification_manual"]
-                    }
-                    modified_code = response_data["modified_code"]
-                    modification_manual = response_data["modification_manual"]
-            except Exception as e:
-                logging.error(f"处理修改指令出错: {e}")
-                modified_code = {}
-                modification_manual = f"处理指令失败: {str(e)}"
-
-        return {
-            "status": "success",
-            "message": f"分析完成，识别到 {len(self.module_definitions)} 个模块",
-            "active_module_definitions": processed_definitions,
-            "html_skeleton": skeleton,
-            "modified_code": modified_code,
-            "modification_manual": modification_manual
-        }
-
-    def integrate_modules(self):
-        logging.info("整合模块")
-        if not self.original_html_content_py or not self.modified_modules:
-            logging.warning("无原始HTML或修改模块")
-            return self.original_html_content_py
-
-        final_html = self.original_html_content_py
-        for module_id, module_data in self.modified_modules.items():
-            modified_html = module_data["modified_code"]["html"]
-            associated_elements = module_data["modified_code"]["associated_elements"]
-
-            start_marker = f"<!-- LLM_MODULE_START: {module_id} -->"
-            end_marker = f"<!-- LLM_MODULE_END: {module_id} -->"
-            start_idx = final_html.find(start_marker)
-            end_idx = final_html.find(end_marker, start_idx) + len(end_marker) if start_idx != -1 else -1
-
-            if start_idx != -1 and end_idx != -1:
-                final_html = (
-                    final_html[:start_idx] +
-                    modified_html +
-                    final_html[end_idx:]
-                )
-                logging.debug(f"替换模块 {module_id}")
-            else:
-                logging.warning(f"未找到模块 {module_id} 的标记，尝试直接替换HTML")
-                html_start = final_html.find(modified_html)
-                if html_start != -1:
-                    html_end = html_start + len(modified_html)
-                    final_html = (
-                        final_html[:html_start] +
-                        modified_html +
-                        final_html[html_end:]
-                    )
-
-            for key, value in associated_elements.items():
-                if value and key in ["button", "description"]:
-                    element_start = final_html.find(f'<{key == "description" and "p" or "button"}')
-                    element_end = final_html.find('>', element_start) + 1
-                    if element_start != -1:
-                        final_html = (
-                            final_html[:element_start] +
-                            value +
-                            final_html[element_end:]
-                        )
-                        logging.debug(f"更新关联元素 {key}")
-
-        return final_html
-
-    def get_modification_manual(self, module_id):
-        return self.modified_modules.get(module_id, {}).get("modification_manual", "")
-
-    def get_prompt_template_for_frontend(self):
-        return PROMPT_TEMPLATE_BASE.replace("{user_html_code}", "[用户提供的HTML代码将在此处由后端插入]").replace("{specific_instruction}", "[用户提供的修改指令将在此处由前端插入]")
 
         if not llm_response_data or "definitions" not in llm_response_data:
             print("错误: LLM响应数据不完整或格式不正确 (在最终检查中)。")
@@ -615,8 +550,7 @@ HTML代码：
 
 if __name__ == '__main__':
     api = Api()
-    logging.info("Starting PyWebview window...")
-    window = webview.create_window(
+    webview.create_window(
         '代码智能装配流水线',
         'gui.html',
         js_api=api,
@@ -624,6 +558,4 @@ if __name__ == '__main__':
         height=850,
         resizable=True
     )
-    logging.info("PyWebview window created, starting...")
     webview.start(debug=True)
-    logging.info("PyWebview started.")

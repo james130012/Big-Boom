@@ -535,6 +535,7 @@ HTML代码：
     def get_prompt_template_for_frontend(self):
         return PROMPT_TEMPLATE_BASE.replace("{user_html_code}", "[用户提供的HTML代码将在此处由后端插入]").replace("{specific_instruction}", "[用户提供的修改指令将在此处由前端插入]")
 
+
         if not llm_response_data or "definitions" not in llm_response_data:
             print("错误: LLM响应数据不完整或格式不正确 (在最终检查中)。")
             return {"status": "error", "message": "LLM响应数据不完整或格式不正确。", "active_module_definitions": [], "html_skeleton": self.original_html_content_py}

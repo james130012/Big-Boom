@@ -160,15 +160,22 @@
             }
         }
 
-         // 在 DOM 完全加载后，立即尝试拉取提示词；同时监听自定义事件
-         document.addEventListener('DOMContentLoaded', () => {
-             console.log("DOM loaded — 尝试加载提示词模板");
-             loadPromptTemplate();
-         });
-         document.addEventListener('pywebviewready', () => {
-             console.log("pywebviewready — 后端 API 注入完成，加载提示词模板");
-             loadPromptTemplate();
-         });
+        // 等待 PyWebview 准备好
+        window.addEventListener('pywebviewready', () => {
+            console.log("PyWebview ready, loading prompt template...");
+            loadPromptTemplate();
+        });
+
+        // 延迟加载，确保 PyWebview 初始化
+        setTimeout(() => {
+            if (window.pywebview) {
+                loadPromptTemplate();
+            } else {
+                console.warn("PyWebview not loaded after delay.");
+                loadPromptTemplate();
+            }
+        }, 2000);
+        
 
         // 等待 PyWebview API 准备好的工具函数
         async function waitForPywebviewApi(maxAttempts = 10, delay = 1000) {
